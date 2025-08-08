@@ -127,10 +127,13 @@
     <div class="row advanced-feature">
       <label for="blacklist">Disable on sites<br />
         <em>One host or <a href="https://www.regexpal.com/">Regex</a> per line. Use the literal notation, e.g.
-          <code>/(.+)youtube\.com(\/*)$/gi</code></em>
+          <code>/(.+)youtube\.com(\/*)$/gi</code><br />
+          <strong>Note:</strong> For embedded videos (like Vimeo in iframes), add the parent site's 
+          domain to block the extension on embedded videos from that site.
+        </em>
       </label>
       <textarea id="blacklist" rows="10" cols="50"></textarea>
-      </label>
+    </div>
   </section>
 
   <div class="button-group">

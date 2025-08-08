@@ -225,6 +225,8 @@ label em {
   font-weight: 400;
   margin-top: 2px;
   font-style: normal;
+  word-wrap: break-word;
+  line-height: 1.4;
 }
 
 /* Material Design text inputs */
@@ -545,6 +547,12 @@ button:focus-visible {
 
 .row:has(#blacklist) label {
   flex: none;
+  max-width: 100%;
+}
+
+.row:has(#blacklist) label em {
+  word-break: break-word;
+  hyphens: auto;
 }
 
 /* FAQ section */
