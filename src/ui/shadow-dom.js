@@ -132,6 +132,19 @@ class ShadowDOMManager {
         opacity: 0.65;
         ${positionConfig.left ? 'margin-left: 8px; margin-right: 2px;' : 'margin-right: 8px; margin-left: 2px;'}
       }
+      
+      button.blacklistButton {
+        opacity: 0.8;
+        background: #ff4444;
+        color: white;
+        font-size: 11px;
+        padding: 1px 3px 2px 3px;
+      }
+      
+      button.blacklistButton:hover {
+        background: #cc0000;
+        opacity: 1;
+      }
     `;
     
     style.textContent = baseCSS;
@@ -153,6 +166,7 @@ class ShadowDOMManager {
       { action: 'slower', text: '−', class: '' },
       { action: 'faster', text: '+', class: '' },
       { action: 'advance', text: '»', class: 'rw' },
+      { action: 'blacklist', text: '🚫', class: 'blacklistButton', title: 'Add this site to blacklist' },
       { action: 'display', text: '×', class: 'hideButton' },
     ];
 
@@ -163,7 +177,10 @@ class ShadowDOMManager {
     draggable.style.cssText = `font-size: ${buttonSize}px;`;
     draggable.textContent = speed;
 
+    // For right positions, mirror the layout: controls appear to the left of speed indicator
+    // For left positions, keep original: speed indicator first, then controls
     if (positionConfig.left) {
+      // Left positions: speed indicator + controls (original behavior)
       controller.appendChild(draggable);
       
       buttons.forEach((btnConfig) => {
@@ -172,12 +189,19 @@ class ShadowDOMManager {
         if (btnConfig.class) {
           button.className = btnConfig.class;
         }
+        if (btnConfig.title) {
+          button.title = btnConfig.title;
+        }
         button.textContent = btnConfig.text;
         controls.appendChild(button);
       });
       
       controller.appendChild(controls);
     } else {
+      // Right positions: controls + speed indicator 
+      // Keep inner controls in same order, just move X button to the front
+      
+      // First add the X button to the front
       const displayButton = buttons.find(btn => btn.action === 'display');
       if (displayButton) {
         const button = document.createElement('button');
@@ -185,10 +209,14 @@ class ShadowDOMManager {
         if (displayButton.class) {
           button.className = displayButton.class;
         }
+        if (displayButton.title) {
+          button.title = displayButton.title;
+        }
         button.textContent = displayButton.text;
         controls.appendChild(button);
       }
       
+      // Then add the inner controls in their original order
       const innerButtons = buttons.filter(btn => btn.action !== 'display');
       innerButtons.forEach((btnConfig) => {
         const button = document.createElement('button');
@@ -196,10 +224,14 @@ class ShadowDOMManager {
         if (btnConfig.class) {
           button.className = btnConfig.class;
         }
+        if (btnConfig.title) {
+          button.title = btnConfig.title;
+        }
         button.textContent = btnConfig.text;
         controls.appendChild(button);
       });
       
+      // Add controls first, then speed indicator so speed shows on the right
       controller.appendChild(controls);
       controller.appendChild(draggable);
     }
@@ -264,8 +296,10 @@ class ShadowDOMManager {
    * @returns {Object} Position object with top and left properties
    */
   static calculatePosition(video, position = 'top-left') {
+    // For YouTube, try to use the player container instead of just the video element
     let targetElement = video;
     if (location.hostname === 'www.youtube.com') {
+      // Look for the YouTube player container that includes black bars
       const playerContainer = video.closest('.ytp-player-content.ytp-iv-player-content') || 
                              video.closest('.ytp-player-content') ||
                              video.closest('#movie_player') ||
@@ -277,6 +311,9 @@ class ShadowDOMManager {
 
     const rect = targetElement.getBoundingClientRect();
 
+    // getBoundingClientRect is relative to the viewport; style coordinates
+    // are relative to offsetParent, so we adjust for that here. offsetParent
+    // can be null if the video has `display: none` or is not yet in the DOM.
     const offsetRect = video.offsetParent?.getBoundingClientRect();
     
     const positionConfig = window.VSC.Constants.CONTROLLER_POSITIONS[position] || 
@@ -285,17 +322,23 @@ class ShadowDOMManager {
     let top, left;
     
     if (positionConfig.top) {
+      // Top positions
       top = `${Math.max(rect.top - (offsetRect?.top || 0), 0)}px`;
     } else {
-      let bottomOffset = 80;
+      // Bottom positions - need to account for controller height and video controls
+      let bottomOffset = 80; // Default offset
       
+      // YouTube-specific bottom positioning to avoid native controls
       if (location.hostname === 'www.youtube.com') {
-        bottomOffset = 120;
+        // YouTube's control bar is typically around 40-50px, but we need extra space
+        // for our controller height (~30px) plus some margin
+        bottomOffset = 120; // Increased offset for YouTube
         
+        // Try to detect if YouTube controls are visible and adjust accordingly
         const ytpControls = document.querySelector('.ytp-chrome-bottom');
         if (ytpControls) {
           const controlsHeight = ytpControls.offsetHeight || 40;
-          bottomOffset = Math.max(bottomOffset, controlsHeight + 50);
+          bottomOffset = Math.max(bottomOffset, controlsHeight + 50); // Controls height + controller + margin
         }
       }
       
@@ -304,10 +347,12 @@ class ShadowDOMManager {
     }
     
     if (positionConfig.left) {
+      // Left positions
       left = `${Math.max(rect.left - (offsetRect?.left || 0), 0)}px`;
     } else {
+      // Right positions - position with same padding as left (15px)
       const rightEdge = rect.right - (offsetRect?.left || 0);
-      left = `${Math.max(rightEdge - 15, 0)}px`;
+      left = `${Math.max(rightEdge - 15, 0)}px`; // Same 15px padding as left positions
     }
 
     return { top, left };
