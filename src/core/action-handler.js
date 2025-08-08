@@ -108,6 +108,12 @@ class ActionHandler {
         break;
       }
 
+      case 'blacklist': {
+        window.VSC.logger.debug('Blacklist action triggered');
+        this.addToBlacklist();
+        break;
+      }
+
       case 'blink':
         window.VSC.logger.debug('Showing controller momentarily');
         this.blinkController(video.vsc.div, value);
@@ -440,6 +446,101 @@ class ActionHandler {
     // 7. Refresh cooldown to prevent rapid changes
     if (this.eventManager) {
       this.eventManager.refreshCoolDown();
+    }
+  }
+
+  /**
+   * Add current site to blacklist
+   */
+  addToBlacklist() {
+    try {
+      const currentHostname = window.location.hostname;
+      const currentBlacklist = this.config.settings.blacklist || '';
+      
+      // Check if already blacklisted
+      if (window.VSC.DomUtils.isBlacklisted(currentBlacklist)) {
+        window.VSC.logger.info('Site is already blacklisted');
+        this.showTemporaryMessage('Already blacklisted!');
+        return;
+      }
+      
+      // Add to blacklist
+      const newBlacklist = currentBlacklist.trim() 
+        ? `${currentBlacklist.trim()}\n${currentHostname}`
+        : currentHostname;
+      
+      // Update settings
+      this.config.settings.blacklist = newBlacklist;
+      
+      // Save to storage
+      window.VSC.StorageManager.set({
+        blacklist: newBlacklist
+      }).then(() => {
+        window.VSC.logger.info(`Added ${currentHostname} to blacklist`);
+        this.showTemporaryMessage(`Added ${currentHostname} to blacklist. Refresh to take effect.`);
+      }).catch(error => {
+        window.VSC.logger.error('Failed to save blacklist:', error);
+        this.showTemporaryMessage('Failed to save blacklist!');
+      });
+      
+    } catch (error) {
+      window.VSC.logger.error('Failed to add to blacklist:', error);
+      this.showTemporaryMessage('Error adding to blacklist!');
+    }
+  }
+
+  /**
+   * Show a temporary message on the video
+   * @param {string} message - Message to show
+   */
+  showTemporaryMessage(message) {
+    try {
+      // Create temporary message overlay
+      const overlay = document.createElement('div');
+      overlay.style.cssText = `
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: rgba(0, 0, 0, 0.8);
+        color: white;
+        padding: 12px 20px;
+        border-radius: 6px;
+        font-size: 14px;
+        font-family: sans-serif;
+        z-index: 10000000;
+        max-width: 300px;
+        text-align: center;
+        animation: vscFadeIn 0.3s ease-in;
+      `;
+      overlay.textContent = message;
+      
+      // Add fade-in animation
+      const style = document.createElement('style');
+      style.textContent = `
+        @keyframes vscFadeIn {
+          from { opacity: 0; transform: translate(-50%, -50%) scale(0.8); }
+          to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+        }
+      `;
+      document.head.appendChild(style);
+      
+      document.body.appendChild(overlay);
+      
+      // Remove after 3 seconds
+      setTimeout(() => {
+        if (overlay.parentNode) {
+          overlay.style.animation = 'vscFadeIn 0.3s ease-out reverse';
+          setTimeout(() => {
+            overlay.remove();
+            style.remove();
+          }, 300);
+        }
+      }, 3000);
+      
+    } catch (error) {
+      // Fallback to console if overlay fails
+      console.log('VSC: ' + message);
     }
   }
 }

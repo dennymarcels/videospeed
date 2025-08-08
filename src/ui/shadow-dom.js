@@ -123,6 +123,19 @@ class ShadowDOMManager {
         margin-left: 8px;
         margin-right: 2px;
       }
+      
+      button.blacklistButton {
+        opacity: 0.8;
+        background: #ff4444;
+        color: white;
+        font-size: 11px;
+        padding: 1px 3px 2px 3px;
+      }
+      
+      button.blacklistButton:hover {
+        background: #cc0000;
+        opacity: 1;
+      }
     `;
     shadow.appendChild(style);
 
@@ -150,6 +163,7 @@ class ShadowDOMManager {
       { action: 'slower', text: '−', class: '' },
       { action: 'faster', text: '+', class: '' },
       { action: 'advance', text: '»', class: 'rw' },
+      { action: 'blacklist', text: '🚫', class: 'blacklistButton', title: 'Add this site to blacklist' },
       { action: 'display', text: '×', class: 'hideButton' },
     ];
 
@@ -158,6 +172,9 @@ class ShadowDOMManager {
       button.setAttribute('data-action', btnConfig.action);
       if (btnConfig.class) {
         button.className = btnConfig.class;
+      }
+      if (btnConfig.title) {
+        button.title = btnConfig.title;
       }
       button.textContent = btnConfig.text;
       controls.appendChild(button);
