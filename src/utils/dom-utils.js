@@ -24,6 +24,26 @@ window.VSC.DomUtils.escapeStringRegExp = function (str) {
 window.VSC.DomUtils.isBlacklisted = function (blacklist) {
   let blacklisted = false;
 
+  // URLs to check - always check current URL
+  const urlsToCheck = [location.href];
+  
+  // If we're in an iframe, also check the parent window's URL
+  if (window.VSC.DomUtils.inIframe()) {
+    try {
+      // Try to access parent window's location
+      // This will work for same-origin iframes, fail for cross-origin
+      if (window.parent && window.parent.location && window.parent.location.href) {
+        urlsToCheck.push(window.parent.location.href);
+      }
+    } catch (e) {
+      // Cross-origin iframe - we can't access parent URL directly
+      // Try to get it from document.referrer if available
+      if (document.referrer) {
+        urlsToCheck.push(document.referrer);
+      }
+    }
+  }
+
   blacklist.split('\n').forEach((match) => {
     match = match.replace(window.VSC.Constants.regStrip, '');
     if (match.length === 0) {
@@ -70,9 +90,12 @@ window.VSC.DomUtils.isBlacklisted = function (blacklist) {
       }
     }
 
-    if (regexp.test(location.href)) {
-      blacklisted = true;
-    }
+    // Check the pattern against all URLs (current + parent if in iframe)
+    urlsToCheck.forEach(url => {
+      if (regexp.test(url)) {
+        blacklisted = true;
+      }
+    });
   });
 
   return blacklisted;

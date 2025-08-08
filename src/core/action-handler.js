@@ -474,10 +474,34 @@ class ActionHandler {
    */
   addToBlacklist() {
     try {
-      const currentHostname = window.location.hostname;
+      // Determine the correct hostname to blacklist
+      let targetHostname = window.location.hostname;
+      
+      // If we're in an iframe, try to get the parent domain instead
+      if (window.VSC.DomUtils.inIframe()) {
+        try {
+          // Try to access parent window's location (works for same-origin)
+          if (window.parent && window.parent.location && window.parent.location.hostname) {
+            targetHostname = window.parent.location.hostname;
+            window.VSC.logger.debug(`Using parent domain: ${targetHostname}`);
+          }
+        } catch (e) {
+          // Cross-origin iframe - try to get hostname from document.referrer
+          if (document.referrer) {
+            try {
+              const referrerUrl = new URL(document.referrer);
+              targetHostname = referrerUrl.hostname;
+              window.VSC.logger.debug(`Using referrer domain: ${targetHostname}`);
+            } catch (refError) {
+              window.VSC.logger.warn('Could not parse referrer URL, using current hostname');
+            }
+          }
+        }
+      }
+      
       const currentBlacklist = this.config.settings.blacklist || '';
       
-      // Check if already blacklisted
+      // Check if already blacklisted (this will check both current and parent domains)
       if (window.VSC.DomUtils.isBlacklisted(currentBlacklist)) {
         window.VSC.logger.info('Site is already blacklisted');
         this.showTemporaryMessage('Already blacklisted!');
@@ -486,8 +510,8 @@ class ActionHandler {
       
       // Add to blacklist
       const newBlacklist = currentBlacklist.trim() 
-        ? `${currentBlacklist.trim()}\n${currentHostname}`
-        : currentHostname;
+        ? `${currentBlacklist.trim()}\n${targetHostname}`
+        : targetHostname;
       
       // Update settings
       this.config.settings.blacklist = newBlacklist;
@@ -496,8 +520,8 @@ class ActionHandler {
       window.VSC.StorageManager.set({
         blacklist: newBlacklist
       }).then(() => {
-        window.VSC.logger.info(`Added ${currentHostname} to blacklist`);
-        this.showTemporaryMessage(`Added ${currentHostname} to blacklist. Refresh to take effect.`);
+        window.VSC.logger.info(`Added ${targetHostname} to blacklist`);
+        this.showTemporaryMessage(`Added ${targetHostname} to blacklist. Refresh to take effect.`);
       }).catch(error => {
         window.VSC.logger.error('Failed to save blacklist:', error);
         this.showTemporaryMessage('Failed to save blacklist!');
@@ -531,6 +555,10 @@ class ActionHandler {
         z-index: 10000000;
         max-width: 300px;
         text-align: center;
+        word-wrap: break-word;
+        word-break: break-word;
+        white-space: normal;
+        line-height: 1.4;
         animation: vscFadeIn 0.3s ease-in;
       `;
       overlay.textContent = message;
